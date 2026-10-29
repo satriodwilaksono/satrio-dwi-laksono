@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Tidewatch – Harbor Operations</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+:root{
+  --bg:#06222a;
+  --ink:#e8f1ef;
+  --mute:#8fb0ad;
+  --line:rgba(255,255,255,.12);
+  --amber:#ffb547;
+  --sea:#5eead4;
+  --red:#ff6b57;
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--ink);
+  font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(1100px 560px at 8% -12%, rgba(94,234,212,.11), transparent 62%),
+    radial-gradient(900px 520px at 102% -4%, rgba(255,181,71,.09), transparent 58%),
+    var(--bg);
+  background-attachment:fixed;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom,0px));
+}
+
+h1,h2,h3,.display{font-family:'Bricolage Grotesque','IBM Plex Sans',sans-serif;letter-spacing:-.015em}
+
+[hidden]{display:none!important}
+
+:focus-visible{outline:2px solid var(--sea);outline-offset:2px;border-radius:6px}
+
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+.mute{color:var(--mute)}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:30;
+  padding-top:env(safe-area-inset-top,0px);
+  background:rgba(6,34,42,.74);
+  -webkit-backdrop-filter:blur(16px);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);
+}
+.topbar-inner{display:flex;align-items:center;gap:18px;height:60px}
+
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);flex:none}
+.brand-mark{
+  width:30px;height:30px;border-radius:9px;flex:none;
+  background:linear-gradient(150deg, rgba(94,234,212,.22), rgba(255,181,71,.18));
+  border:1px solid rgba(94,234,212,.32);
+  display:grid;place-items:center;
+}
+.brand-name{font-family:'Bricolage Grotesque';font-weight:800;font-size:16.5px}
+.brand-sub{
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--mute);border-left:1px solid var(--line);padding-left:10px;margin-left:2px;
+}
+
+.nav{display:flex;gap:2px;margin-left:8px}
+.nav a{
+  color:var(--mute);text-decoration:none;font-size:13px;padding:7px 12px;border-radius:8px;
+  transition:color .15s, background .15s;
+}
+.nav a:hover{color:var(--ink);background:rgba(255,255,255,.05)}
+.nav a.active{color:var(--ink);background:rgba(255,255,255,.07)}
+
+.status{margin-left:auto;display:flex;align-items:center;gap:9px;font-size:12px;color:var(--mute);flex:none}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--sea);box-shadow:0 0 0 0 rgba(94,234,212,.6);animation:pulse 2.4s infinite}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(94,234,212,.55)}
+  70%{box-shadow:0 0 0 8px rgba(94,234,212,0)}
+  100%{box-shadow:0 0 0 0 rgba(94,234,212,0)}
+}
+.clock{
+  font-variant-numeric:tabular-nums;color:var(--ink);font-weight:500;
+  border-left:1px solid var(--line);padding-left:10px;
+}
+
+/* ---------- cards ---------- */
+.card{
+  position:relative;
+  background:linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:18px 20px;
+  overflow:hidden;
+}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.card-head h2{margin:0;font-size:16.5px;font-weight:700}
+.card-head p{margin:2px 0 0;font-size:12px}
+
+/* ---------- segmented control ---------- */
+.seg{
+  display:inline-flex;gap:2px;padding:3px;border-radius:10px;flex:none;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);
+}
+.seg-btn{
+  font:inherit;font-size:12px;font-weight:500;color:var(--mute);
+  background:none;border:0;padding:5px 11px;border-radius:7px;cursor:pointer;
+  transition:color .15s, background .15s;
+}
+.seg-btn:hover{color:var(--ink)}
+.seg-btn.is-on{background:rgba(94,234,212,.14);color:var(--sea)}
+
+/* ---------- KPI row ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0 16px}
+.kpi{padding:15px 17px}
+.k-label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.k-val{
+  font-family:'Bricolage Grotesque';font-weight:700;font-size:32px;line-height:1.1;
+  letter-spacing:-.03em;font-variant-numeric:tabular-nums;margin-top:6px;
+}
+.k-unit{font-size:13px;font-weight:500;color:var(--mute);margin-left:3px;letter-spacing:0}
+.k-foot{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mute);margin-top:7px}
+.delta{font-weight:500}
+.delta.up{color:var(--sea)}
+.delta.down{color:var(--red)}
+.delta.flat{color:var(--amber)}
+
+/* ---------- main grid ---------- */
+.grid-main{
+  display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);
+  gap:16px;align-items:start;
+}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* ---------- chart ---------- */
+.chart-holder{position:relative}
+#tide{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y}
+.axis{fill:var(--mute);font-size:10px;font-weight:500;font-family:'IBM Plex Sans',sans-serif}
+
+.tip{
+  position:absolute;z-index:5;pointer-events:none;
+  transform:translate(-50%,-125%);
+  display:flex;flex-direction:column;gap:1px;
+  padding:6px 9px;border-radius:9px;white-space:nowrap;
+  background:rgba(4,26,32,.96);border:1px solid var(--line);
+  box-shadow:0 10px 26px rgba(0,0,0,.5);
+}
+.tip strong{font-family:'Bricolage Grotesque';font-size:14px;font-weight:700}
+.tip span{font-size:11px;color:var(--mute)}
+
+.chart-foot{
+  display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:12px;
+  padding-top:12px;border-top:1px solid var(--line);font-size:12px;
+}
+.chart-foot .item{display:flex;align-items:center;gap:7px;color:var(--mute)}
+.chart-foot .swatch{width:7px;height:7px;border-radius:50%;flex:none}
+.chart-foot b{color:var(--ink);font-weight:500}
+
+/* ---------- table ---------- */
+.table-scroll{overflow-x:auto;margin:0 -20px;padding:0 20px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+th{
+  text-align:left;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:500;color:var(--mute);padding:0 10px 10px;border-bottom:1px solid var(--line);
+  white-space:nowrap;
+}
+td{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+.vessel{font-weight:500;color:var(--ink)}
+.vessel small{display:block;font-size:11px;color:var(--mute);font-weight:400}
+.num{font-variant-numeric:tabular-nums;color:var(--mute)}
+
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:999px;
+  border:1px solid transparent;white-space:nowrap;
+}
+.pill::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
+.pill.ok{color:var(--sea);background:rgba(94,234,212,.1);border-color:rgba(94,234,212,.26)}
+.pill.warn{color:var(--amber);background:rgba(255,181,71,.1);border-color:rgba(255,181,71,.28)}
+.pill.bad{color:var(--red);background:rgba(255,107,87,.1);border-color:rgba(255,107,87,.28)}
+.pill.mute{color:var(--mute);background:rgba(255,255,255,.06);border-color:var(--line)}
+
+/* ---------- conditions ---------- */
+.cond{display:flex;flex-direction:column;gap:14px}
+.cond-row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:baseline}
+.cond-row .name{font-size:12px;color:var(--mute)}
+.cond-row .val{font-family:'Bricolage Grotesque';font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.meter{grid-column:1/-1;height:4px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:999px;background:var(--sea)}
+.meter i.amber{background:var(--amber)}
+.meter i.red{background:var(--red)}
+
+/* ---------- alerts ---------- */
+.alerts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.alert{
+  display:flex;gap:11px;align-items:flex-start;
+  padding:11px 12px;border-radius:12px;
+  background:rgba(255,255,255,.035);
+  border:1px solid var(--line);
+  border-left:3px solid var(--mute);
+  transition:opacity .25s, transform .25s;
+}
+.alert[data-sev="bad"]{border-left-color:var(--red)}
+.alert[data-sev="warn"]{border-left-color:var(--amber)}
+.alert[data-sev="info"]{border-left-color:var(--sea)}
+.alert-body{flex:1;min-width:0}
+.alert-body p{margin:0;font-size:12.5px;line-height:1.45}
+.alert-body span{font-size:11px;color:var(--mute)}
+.dismiss{
+  flex:none;width:22px;height:22px;border-radius:6px;border:0;cursor:pointer;
+  background:transparent;color:var(--mute);font-size:16px;line-height:1;
+  display:grid;place-items:center;transition:background .15s,color .15s;
+}
+.dismiss:hover{background:rgba(255,255,255,.08);color:var(--ink)}
+.alert.leaving{opacity:0;transform:translateX(12px)}
+
+/* ---------- footer ---------- */
+.foot{
+  margin-top:24px;padding-top:16px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;
+  font-size:11.5px;color:var(--mute);
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:1000px){
+  .grid-main{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:900px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .nav{display:none}
+}
+@media (max-width:560px){
+  .wrap{padding:0 14px}
+  .table-scroll{margin:0 -20px;padding:0 20px}
+  .card{padding:16px;border-radius:16px}
+  .k-val{font-size:27px}
+  .brand-sub{display:none}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#overview" aria-label="Tidewatch home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="2" stroke-linecap="round">
+          <path d="M2 9c2.5 0 2.5-2.5 5-2.5S9.5 9 12 9s2.5-2.5 5-2.5S19.5 9 22 9"/>
+          <path d="M2 15c2.5 0 2.5-2.5 5-2.5S9.5 15 12 15s2.5-2.5 5-2.5S19.5 15 22 15" opacity=".55"/>
+        </svg>
+      </span>
+      <span class="brand-name">Tidewatch</span>
+      <span class="brand-sub">Harbor Ops</span>
+    </a>
+
+    <nav class="nav" aria-label="Sections">
+      <a href="#overview" class="active">Overview</a>
+      <a href="#berths">Berths</a>
+      <a href="#conditions">Conditions</a>
+      <a href="#alerts">Alerts</a>
+    </nav>
+
+    <div class="status">
+      <span class="pulse" aria-hidden="true"></span>
+      <span>Live</span>
+      <span class="clock" id="clock">--:--:--</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- KPI row -->
+  <section class="kpis" aria-label="Key figures">
+    <div class="card kpi">
+      <div class="k-label">Tide height</div>
+      <div class="k-val"><span id="kpiTide">1.13</span><span class="k-unit">m</span></div>
+      <div class="k-foot"><span class="delta up" id="kpiTideDelta">▲ 0.12 m/h</span><span>rising</span></div>
+    </div>
+    <div class="card kpi">
+      <div class="k-label">Wind</div>
+      <div class="k-val">18<span class="k-unit">kn</span></div>
+      <div class="k-foot"><span class="delta flat">WSW 245°</span><span>gusting 26</span></div>
+    </div>
+    <div class="card kpi">
+      <div class="k-label">Berth occupancy</div>
+      <div class="k-val">4<span class="k-unit">/ 6</span></div>
+      <div class="k-foot"><span class="delta up">67%</span><span>2 inbound</span></div>
+    </div>
+    <div class="card kpi">
+      <div class="k-label">Visibility</div>
+      <div class="k-val">4.2<span class="k-unit">nm</span></div>
+      <div class="k-foot"><span class="delta down">▼ 1.1 nm</span><span>last hour</span></div>
+    </div>
+  </section>
+
+  <div class="grid-main">
+
+    <!-- LEFT COLUMN -->
+    <div class="col">
+
+      <!-- Tide chart -->
+      <section class="card" id="overview">
+        <div class="card-head">
+          <div>
+            <h2>Tide &amp; current</h2>
+            <p class="mute">Station PN-04 · predicted height above chart datum</p>
+          </div>
+          <div class="seg" id="rangeSeg" role="group" aria-label="Chart time range">
+            <button class="seg-btn" data-range="12">12h</button>
+            <button class="seg-btn is-on" data-range="24">24h</button>
+            <button class="seg-btn" data-range="48">48h</button>
+          </div>
+        </div>
+
+        <div class="chart-holder" id="chartHolder">
+          <svg id="tide" viewBox="0 0 720 260" role="img" aria-label="Predicted tide height over time"></svg>
+          <div class="tip" id="tip" hidden></div>
+        </div>
+
+        <div class="chart-foot">
+          <span class="item"><span class="swatch" style="background:var(--amber)"></span>Next high <b id="nextHigh">—</b></span>
+          <span class="item"><span class="swatch" style="background:var(--sea)"></span>Next low <b id="nextLow">—</b></span>
+          <span class="item" style="margin-left:auto">Updated <b id="updated">—</b></span>
+        </div>
+      </section>
+
+      <!-- Berth board -->
+      <section class="card" id="berths">
+        <div class="card-head">
+          <div>
+            <h2>Berth board</h2>
+            <p class="mute">6 berths · 2 arrivals within 6 h</p>
+          </div>
+          <div class="seg" id="berthSeg" role="group" aria-label="Filter berths">
+            <button class="seg-btn is-on" data-filter="all">All</button>
+            <button class="seg-btn" data-filter="inport">In port</button>
+            <button class="seg-btn" data-filter="inbound">Inbound</button>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Vessel</th>
+                <th scope="col">Berth</th>
+                <th scope="col">LOA</th>
+                <th scope="col">Draft</th>
+                <th scope="col">ETA / ETD</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody id="berthBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col">
+
+      <!-- Conditions -->
+      <section class="card" id="conditions">
+        <div class="card-head">
+          <div>
+            <h2>Conditions</h2>
+            <p class="mute">Harbor entrance buoy · 15 min mean</p>
+          </div>
+        </div>
+
+        <div class="cond">
+          <div class="cond-row">
+            <span class="name">Wind speed</span><span class="val">18 kn</span>
+            <div class="meter"><i class="amber" style="width:58%"></i></div>
+          </div>
+          <div class="cond-row">
+            <span class="name">Swell height</span><span class="val">1.4 m</span>
+            <div class="meter"><i style="width:44%"></i></div>
+          </div>
+          <div class="cond-row">
+            <span class="name">Visibility</span><span class="val">4.2 nm</span>
+            <div class="meter"><i class="amber" style="width:52%"></i></div>
+          </div>
+          <div class="cond-row">
+            <span class="name">Air pressure</span><span class="val">1006 hPa</span>
+            <div class="meter"><i class="red" style="width:31%"></i></div>
+          </div>
+          <div class="cond-row">
+            <span class="name">Water temp</span><span class="val">11.8 °C</span>
+            <div class="meter"><i style="width:62%"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Alerts -->
+      <section class="card" id="alerts">
+        <div class="card-head">
+          <div>
+            <h2>Alerts</h2>
+            <p class="mute"><span id="alertCount">3</span> active notices</p>
+          </div>
+        </div>
+
+        <ul class="alerts" id="alertList">
+          <li class="alert" data-sev="bad">
+            <div class="alert-body">
+              <p>Gale force 8 expected from 22:00 — inbound window may close.</p>
+              <span>Met Office · 12 min ago</span>
+            </div>
+            <button class="dismiss" aria-label="Dismiss alert">&times;</button>
+          </li>
+          <li class="alert" data-sev="warn">
+            <div class="alert-body">
+              <p>Berth B-07 fender inspection overdue by 4 h.</p>
+              <span>Dockmaster · 38 min ago</span>
+            </div>
+            <button class="dismiss" aria-label="Dismiss alert">&times;</button>
+          </li>
+          <li class="alert" data-sev="info">
+            <div class="alert-body">
+              <p>Dredger clear of the approach channel — depth restored to 12.6 m.</p>
+              <span>Hydrography · 1 h ago</span>
+            </div>
+            <button class="dismiss" aria-label="Dismiss alert">&times;</button>
+          </li>
+        </ul>
+      </section>
+
+    </div>
+  </div>
+
+  <footer class="foot">
+    <span>Tidewatch · Harbor Operations Console</span>
+    <span>Predicted heights are indicative — do not use for navigation.</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ------------------------------------------------------------------ *
+   *  Clock
+   * ------------------------------------------------------------------ */
+  var clockEl = document.getElementById('clock');
+  function tickClock() {
+    var d = new Date();
+    clockEl.textContent = d.toLocaleTimeString('en-GB', { hour12: false });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  var updatedEl = document.getElementById('updated');
+  if (updatedEl) {
+    updatedEl.textContent = new Date().toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Tide model
+   *  h = hours relative to "now"
+   * ------------------------------------------------------------------ */
+  function tideHeight(h) {
+    return 1.92
+      + 1.12 * Math.sin((h / 12.42) * 2 * Math.PI - 0.90)
+      + 0.16 * Math.sin((h / 24.00) * 2 * Math.PI + 0.60);
+  }
+
+  function clockAt(hoursFromNow) {
+    var d = new Date(Date.now() + hoursFromNow * 3600000);
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  /** First turning point (peak if wantHigh) at or after fromH. */
+  function nextExtreme(fromH, wantHigh) {
+    var step = 0.125;
+    var prev = tideHeight(fromH);
+    for (var i = 0; i < 24 * 8; i++) {
+      var h = fromH + (i + 1) * step;
+      var v = tideHeight(h);
+      var turning = wantHigh ? (v < prev) : (v > prev);
+      if (turning) return { h: h - step, v: prev };
+      prev = v;
+    }
+    return null;
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Chart rendering
+   * ------------------------------------------------------------------ */
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('tide');
+  var holder = document.getElementById('chartHolder');
+  var tip = document.getElementById('tip');
+
+  var W = 720, H = 260;
+  var PAD = { l: 42, r: 18, t: 20, b: 30 };
+  var PAST_HOURS = 3;             // hours of history shown at left edge
+  var chartMap = null;            // { t0, t1, x, y }
+
+  function smoothPath(pts) {
+    if (pts.length < 2) return '';
+    var d = 'M' + pts[0].x.toFixed(2) + ',' + pts[0].y.toFixed(2);
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i - 1] || pts[i];
+      var p1 = pts[i];
+      var p2 = pts[i + 1];
+      var p3 = pts[i + 2] || p2;
+      var t = 0.18;
+      var c1x = p1.x + (p2.x - p0.x) * t;
+      var c1y = p1.y + (p2.y - p0.y) * t;
+      var c2x = p2.x - (p3.x - p1.x) * t;
+      var c2y = p2.y - (p3.y - p1.y) * t;
+      d += ' C' + c1x.toFixed(2) + ',' + c1y.toFixed(2) +
+           ' ' + c2x.toFixed(2) + ',' + c2y.toFixed(2) +
+           ' ' + p2.x.toFixed(2) + ',' + p2.y.toFixed(2);
+    }
+    return d;
+  }
+
+  function renderChart(range) {
+    var t0 = -PAST_HOURS;
+    var t1 = range - PAST_HOURS;
+
+    // dense samples for the curve
+    var N = 260;
+    var samples = [];
+    var min = Infinity, max = -Infinity;
+    for (var i = 0; i <= N; i++) {
+      var h = t0 + (t1 - t0) * (i / N);
+      var v = tideHeight(h);
+      samples.push({ h: h, v: v });
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+
+    var lo = Math.floor((min - 0.2) * 2) / 2;
+    var hi = Math.ceil((max + 0.2) * 2) / 2;
+
+    var plotW = W - PAD.l - PAD.r;
+    var plotH = H - PAD.t - PAD.b;
+
+    function x(h) { return PAD.l + ((h - t0) / (t1 - t0)) * plotW; }
+    function y(v) { return PAD.t + (1 - (v - lo) / (hi - lo)) * plotH; }
+
+    chartMap = { t0: t0, t1: t1, x: x, y: y, lo: lo, hi: hi };
+
+    /* --- horizontal grid + y labels --- */
+    var gridStep = (hi - lo) > 3 ? 1 : 0.5;
+    var grid = '';
+    var steps = Math.round((hi - lo) / gridStep);
+    for (var g = 0; g <= steps; g++) {
+      var gv = lo + g * gridStep;
+      var gy = y(gv).toFixed(1);
+      grid += '<line x1="' + PAD.l + '" y1="' + gy + '" x2="' + (W - PAD.r) + '" y2="' + gy +
+              '" stroke="rgba(255,255,255,.07)" stroke-width="1"/>';
+      grid += '<text x="' + (PAD.l - 10) + '" y="' + (parseFloat(gy) + 4).toFixed(1) +
+              '" text-anchor="end" class="axis">' + gv.toFixed(1) + '</text>';
+    }
+
+    /* --- x axis time labels --- */
+    var every = range <= 12 ? 2 : (range <= 24 ? 4 : 8);
+    var labels = '';
+    for (var lh = Math.ceil(t0 / every) * every; lh <= t1; lh += every) {
+      labels += '<text x="' + x(lh).toFixed(1) + '" y="' + (H - 8) +
+                '" text-anchor="middle" class="axis">' + clockAt(lh) + '</text>';
+    }
+
+    /* --- curve + area --- */
+    var pts = samples.map(function (p) { return { x: x(p.h), y: y(p.v) }; });
+    var line = smoothPath(pts);
+    var baseY = H - PAD.b;
+    var area = line +
+      ' L' + x(t1).toFixed(2) + ',' + baseY +
+      ' L' + x(t0).toFixed(2) + ',' + baseY + ' Z';
+
+    /* --- high / low markers --- */
+    var marks = '';
+    var coarse = [];
+    for (var ch = Math.ceil(t0); ch <= t1; ch += 1) {
+      coarse.push({ h: ch, v: tideHeight(ch) });
+    }
+    for (var m = 1; m < coarse.length - 1; m++) {
+      var a = coarse[m - 1].v, b = coarse[m].v, c = coarse[m + 1].v;
+      var isHigh = b > a && b >= c;
+      var isLow = b < a && b <= c;
+      if (isHigh || isLow) {
+        marks += '<circle cx="' + x(coarse[m].h).toFixed(1) + '" cy="' + y(b).toFixed(1) +
+                 '" r="3.6" fill="' + (isHigh ? '#ffb547' : '#5eead4') +
+                 '" stroke="#06222a" stroke-width="1.6"/>';
+      }
+    }
+
+    /* --- "now" marker --- */
+    var nx = x(0);
+    var nowGroup =
+      '<line x1="' + nx.toFixed(1) + '" y1="' + PAD.t + '" x2="' + nx.toFixed(1) + '" y2="' + baseY +
+        '" stroke="rgba(255,181,71,.5)" stroke-width="1.4" stroke-dasharray="4 4"/>' +
+      '<circle cx="' + nx.toFixed(1) + '" cy="' + y(tideHeight(0)).toFixed(1) +
+        '" r="4.6" fill="#ffb547" stroke="#06222a" stroke-width="2"/>';
+
+    svg.innerHTML =
+      '<defs>' +
+        '<linearGradient id="tideFill" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0%" stop-color="#5eead4" stop-opacity="0.34"/>' +
+          '<stop offset="100%" stop-color="#5eead4" stop-opacity="0"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      grid + labels +
+      '<path d="' + area + '" fill="url(#tideFill)"/>' +
+      '<path d="' + line + '" fill="none" stroke="#5eead4" stroke-width="2.4" ' +
+        'stroke-linecap="round" stroke-linejoin="round"/>' +
+      marks + nowGroup;
+  }
+
+  /* --- hover readout --- */
+  svg.addEventListener('pointermove', function (e) {
+    if (!chartMap) return;
+    var rect = svg.getBoundingClientRect();
+    var vx = ((e.clientX - rect.left) / rect.width) * W;
+    var frac = (vx - PAD.l) / (W - PAD.l - PAD.r);
+    var h = chartMap.t0 + Math.max(0, Math.min(1, frac)) * (chartMap.t1 - chartMap.t0);
+    var v = tideHeight(h);
+
+    var holderRect = holder.getBoundingClientRect();
+    tip.hidden = false;
+    tip.style.left = (e.clientX - holderRect.left) + 'px';
+    tip.style.top = (e.clientY - holderRect.top) + 'px';
+    tip.innerHTML = '<strong>' + v.toFixed(2) + ' m</strong><span>' + clockAt(h) + '</span>';
+  });
+
+  svg.addEventListener('pointerleave', function () { tip.hidden = true; });
+
+  /* --- range segmented control --- */
+  var rangeSeg = document.getElementById('rangeSeg');
+  rangeSeg.addEventListener('click', function (e) {
+    var btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    rangeSeg.querySelectorAll('.seg-btn').forEach(function (b) {
+      b.classList.toggle('is-on', b === btn);
+    });
+    renderChart(parseInt(btn.dataset.range, 10));
+    tip.hidden = true;
+  });
+
+  /* ------------------------------------------------------------------ *
+   *  Berth board
+   * ------------------------------------------------------------------ */
+  var vessels = [
+    { name: 'MV Cormorant Bay', type: 'Container', berth: 'B-04', loa: '212 m', draft: '11.4 m', time: 'ETD 18:40', status: 'Alongside',  cls: 'ok',   group: 'inport'  },
+    { name: 'MT Sable Trader',  type: 'Product tanker', berth: 'B-01', loa: '164 m', draft: '8.2 m',  time: 'ETD 21:15', status: 'Alongside',  cls: 'ok',   group: 'inport'  },
+    { name: 'MV Nordkapp',      type: 'Ro-Ro', berth: 'B-07', loa: '189 m', draft: '9.8 m',  time: 'ETA 16:05', status: 'Approaching', cls: 'warn', group: 'inbound' },
+    { name: 'MV Kestrel Star',  type: 'General cargo', berth: 'B-02', loa: '143 m', draft: '6.9 m',  time: 'ETA 19:30', status: 'Inbound',    cls: 'warn', group: 'inbound' },
+    { name: 'MT Anvil Point',   type: 'Crude tanker', berth: '—',    loa: '230 m', draft: '12.6 m', time: 'ETA 23:50', status: 'Delayed',    cls: 'bad',  group: 'inbound' },
+    { name: 'MV Tidewater 8',   type: 'Tug / workboat', berth: 'B-05', loa: '96 m', draft: '5.1 m', time: 'Cleared 14:20', status: 'Cleared', cls: 'mute', group: 'inport' }
+  ];
+
+  var berthBody = document.getElementById('berthBody');
+  var berthFilter = 'all';
+
+  function renderBerths() {
+    var rows = vessels.filter(function (v) {
+      return berthFilter === 'all' || v.group === berthFilter;
+    });
+
+    berthBody.innerHTML = rows.map(function (v) {
+      return '<tr>' +
+        '<td><span class="vessel">' + v.name + '<small>' + v.type + '</small></span></td>' +
+        '<td class="num">' + v.berth + '</td>' +
+        '<td class="num">' + v.loa + '</td>' +
+        '<td class="num">' + v.draft + '</td>' +
+        '<td class="num">' + v.time + '</td>' +
+        '<td><span class="pill ' + v.cls + '">' + v.status + '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  document.getElementById('berthSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    this.querySelectorAll('.seg-btn').forEach(function (b) {
+      b.classList.toggle('is-on', b === btn);
+    });
+    berthFilter = btn.dataset.filter;
+    renderBerths();
+  });
+
+  renderBerths();
+
+  /* ------------------------------------------------------------------ *
+   *  Alerts
+   * ------------------------------------------------------------------ */
+  var alertList = document.getElementById('alertList');
+  var alertCount = document.getElementById('alertCount');
+
+  alertList.addEventListener('click', function (e) {
+    var btn = e.target.closest('.dismiss');
+    if (!btn) return;
+    var li = btn.closest('.alert');
+    li.classList.add('leaving');
+    setTimeout(function () {
+      li.remove();
+      alertCount.textContent = alertList.children.length;
+    }, 220);
+  });
+
+  /* ------------------------------------------------------------------ *
+   *  Boot
+   * ------------------------------------------------------------------ */
+  renderChart(24);
+
+  // KPI tide value + footers
+  var h0 = tideHeight(0);
+  var h1 = tideHeight(1);
+  var tideKpi = document.getElementById('kpiTide');
+  var tideDelta = document.getElementById('kpiTideDelta');
+  if (tideKpi) tideKpi.textContent = h0.toFixed(2);
+
+  if (tideDelta) {
+    var diff = h1 - h0;
+    tideDelta.textContent = (diff >= 0 ? '▲ ' : '▼ ') + Math.abs(diff).toFixed(2) + ' m/h';
+    tideDelta.className = 'delta ' + (diff >= 0 ? 'up' : 'down');
+    var sibling = tideDelta.nextElementSibling;
+    if (sibling) sibling.textContent = diff >= 0 ? 'rising' : 'falling';
+  }
+
+  var nh = nextExtreme(0, true);
+  var nl = nextExtreme(0, false);
+  var nextHighEl = document.getElementById('nextHigh');
+  var nextLowEl = document.getElementById('nextLow');
+  if (nh && nextHighEl) nextHighEl.textContent = clockAt(nh.h) + ' · ' + nh.v.toFixed(1) + ' m';
+  if (nl && nextLowEl) nextLowEl.textContent = clockAt(nl.h) + ' · ' + nl.v.toFixed(1) + ' m';
+
+  // keep the now-marker honest
+  setInterval(function () { renderChart(
+    parseInt(rangeSeg.querySelector('.seg-btn.is-on').dataset.range, 10)
+  ); }, 60000);
+
+})();
+</script>
+</body>
+</html>
